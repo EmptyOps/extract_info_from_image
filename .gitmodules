@@ -1,0 +1,3 @@
+[submodule "ocr-convert-image-to-text"]
+	path = ocr-convert-image-to-text
+	url = https://github.com/prabhakar267/ocr-convert-image-to-text

@@ -1,0 +1,4 @@
+# Ignore directories first
+__*/
+__*.*
+*.DS_Store
