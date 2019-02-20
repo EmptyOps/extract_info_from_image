@@ -1,3 +1,6 @@
+from __future__ import print_function
+import io
+
 import argparse
 
 import sys, os
@@ -7,6 +10,9 @@ import numpy as np
 from glob import glob
 import json
 import collections
+import re
+
+
 
 
 # Instantiate the parser
@@ -14,7 +20,7 @@ parser = argparse.ArgumentParser(description='a wrapper to extract desired infor
 
 # verbose
 parser.add_argument('--verbose', action='store_true',
-                    help='A boolean True False')
+                    help='verbose mode')
 
 # 
 parser.add_argument('--input_dir', type=str, 
@@ -45,8 +51,10 @@ parser.add_argument('--python_path', type=str, nargs='?',
 # 
 parser.add_argument('--extract_text', action='store_true',
                     help='A boolean True False')
-parser.add_argument('--parse_format', type=str,  nargs='?',
-                    help='will parse and extracts only the meaningful texts like numbers etc from the extract text output, supported options [\'numbers\']')
+parser.add_argument('--extract_text_regex_char_whitelist', type=str,  nargs='?',
+                    help='will extract only whitelisted characters specified in filter for e.g. 0-9$,. This is usefull when the tesseract is not able to extract right information with their char whiteliste commans except provided the training')
+parser.add_argument('--extract_text_replace_newline_with_space', action='store_true',
+                    help='will replace new lines with white space before passing to output layer')
 
 parser.add_argument('--object_image', type=str,  nargs='?',
                     help='if provided all matching object locations will be extracted')
@@ -127,11 +135,6 @@ if args.extract_text:
             print(res["text"][actual_dir])
             
         print("extract text done")        
-        
-        #extract only the meaningful texts like numbers etc
-        if args.parse_format:
-            if args.parse_format == 'numbers':
-                raise Exception("Not Implemented Error, sorry parse_format with numbers isn't supported yet")    
 
         
 #extract the object location 
@@ -175,6 +178,8 @@ if args.rgba_value:
 #out_to_csv_file
 if args.out_to_csv_file:
 
+    dirs_orig = glob( args.input_dir + "/*/" )
+
     with open( args.out_to_csv_file, 'wb' ) as file:
     
         for dir in dirs:
@@ -183,16 +188,36 @@ if args.out_to_csv_file:
             if "text" in res:
                 if actual_dir in res["text"]:
                 
-                    items = os.listdir( dir )
+                    out_dir = os.path.join( args.output_dir, actual_dir ) if len(dirs_orig) > 0 else args.output_dir
+                    items = os.listdir( out_dir )
                     for item in items:
-                        
-                        with open( dir + item, 'r', errors='ignore' ) as myfile:
-                            strv = " ; " + myfile.read() + "; " 
+
+                        #drop bad characters 
+                        with io.open( os.path.join( out_dir, item ),'r',encoding='utf-8',errors='ignore') as infile, \
+                             io.open( os.path.join( out_dir, item ) + 'd_parsed.txt','w',encoding='ascii',errors='ignore') as outfile:
+                                for line in infile:
+                                    print(*line.split(), file=outfile)
+
+                        #write to csv
+                        with open( os.path.join( out_dir, item ) + 'd_parsed.txt', 'r', errors='ignore' ) as myfile:
+                            strv = "" + myfile.read() + "".strip() 
                             print( strv )
                         
-                            line = "\""+actual_dir+"\";\""+item+"\";\""+ myfile.read() +"\"" 
+                            if args.extract_text_regex_char_whitelist:
+                                strv = re.sub("[^"+args.extract_text_regex_char_whitelist+"]", "", strv)
+                                
+                            if args.extract_text_replace_newline_with_space:
+                                strv = strv.replace('\n', ' ')
+                                
+                            print( strv )
+                        
+                            fname = os.path.splitext( item )[0]
+                            line = "\""+actual_dir+"\";\""+fname+"\";\""+ strv +"\"" 
                             file.write(line.encode())
                             file.write('\n'.encode())
+                            
+                        #remove parsed copy 
+                        os.remove( os.path.join( out_dir, item ) + 'd_parsed.txt' )
                 
             if "object_locations" in res:
                 file.write( str( res["object_locations"] ).encode() )
@@ -205,7 +230,8 @@ if args.out_to_csv_file:
                     dictjson = collections.OrderedDict(sorted(dictjson.items()))
                     
                     for keyinr in dictjson:
-                        line = "\""+actual_dir+"\";\""+keyinr+"\";\""+ json.dumps( dictjson[keyinr], sort_keys=True ) +"\"" 
+                        #line = "\""+actual_dir+"\";\""+keyinr+"\";\""+ json.dumps( dictjson[keyinr], sort_keys=True ) +"\"" 
+                        line = "'"+actual_dir+";'"+keyinr+";'"+ json.dumps( dictjson[keyinr], sort_keys=True ) +"" 
                         file.write(line.encode())
                         file.write('\n'.encode())
     
