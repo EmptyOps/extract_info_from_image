@@ -212,7 +212,7 @@ if args.out_to_csv_file:
                             print( strv )
                         
                             fname = os.path.splitext( item )[0]
-                            line = "\""+actual_dir+"\";\""+fname+"\";\""+ strv +"\"" 
+                            line = "\""+actual_dir+"\";\""+fname+"\";\"'"+ strv +"\"" 
                             file.write(line.encode())
                             file.write('\n'.encode())
                             
@@ -231,7 +231,7 @@ if args.out_to_csv_file:
                     
                     for keyinr in dictjson:
                         #line = "\""+actual_dir+"\";\""+keyinr+"\";\""+ json.dumps( dictjson[keyinr], sort_keys=True ) +"\"" 
-                        line = "'"+actual_dir+";'"+keyinr+";'"+ json.dumps( dictjson[keyinr], sort_keys=True ) +"" 
+                        line = ""+actual_dir+";"+keyinr+";'"+ json.dumps( dictjson[keyinr], sort_keys=True ) +"" 
                         file.write(line.encode())
                         file.write('\n'.encode())
     
